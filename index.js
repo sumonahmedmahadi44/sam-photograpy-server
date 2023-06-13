@@ -2,10 +2,10 @@ const express = require("express");
 const app = express();
 const cors = require("cors");
 const jwt = require("jsonwebtoken");
-const stripe = require("stripe")(process.env.PAYMENT_SECRET_KEY);
 const { MongoClient, ServerApiVersion, ObjectId } = require("mongodb");
 const port = process.env.PORT || 5000;
 require("dotenv").config();
+const stripe = require("stripe")(process.env.PAYMENT_SECRET_KEY);
 
 app.use(cors());
 app.use(express.json());
@@ -51,9 +51,7 @@ async function run() {
     const SelectedClassesCollection = client
       .db("samDb")
       .collection("selectedClasses");
-    const paymentCollection = client
-      .db("samDb")
-      .collection("payment");
+    const paymentCollection = client.db("samDb").collection("payment");
 
     app.post("/jwt", (req, res) => {
       const user = req.body;
@@ -96,12 +94,6 @@ async function run() {
       const result = await classesCollection.find(filter).toArray();
       res.send(result);
     });
-    // app.get("/myClass/:email", async (req, res) => {
-    //     const email = req.params.email;
-    //     const query = { InstructorEmail: email };
-    //     const result = await classesCollection.find(query).toArray();
-    //     res.send(result);
-    //   });
 
     app.post("/classes", verifyJWT, verifyInstructor, async (req, res) => {
       const newClass = req.body;
@@ -118,6 +110,7 @@ async function run() {
 
     app.get("/selectedClass", async (req, res) => {
       const email = req.query.email;
+      console.log(email);
       if (!email) {
         res.send([]);
       }
@@ -219,18 +212,6 @@ async function run() {
       res.send(result);
     });
 
-    // app.patch('/classes/status/:id',async(req,res)=>{
-    //     const id = req.params.id;
-    //     const filter ={_id:new ObjectId(id)};
-    //     const updateDoc={
-    //         $set:{
-    //             status:'feedback'
-    //         },
-    //     };
-    //     const result = await classesCollection.updateOne(filter,updateDoc);
-    //     res.send(result)
-    // })
-
     app.get("/users/admin/:email", verifyJWT, async (req, res) => {
       const email = req.params.email;
       const query = { email: email };
@@ -257,37 +238,69 @@ async function run() {
 
     app.post("/create-payment-intent", verifyJWT, async (req, res) => {
       const { price } = req.body;
-      const amount = parseInt(price * 100);
+      console.log(price)
+      const amount = price * 100;
       const paymentIntent = await stripe.paymentIntents.create({
         amount: amount,
         currency: "usd",
         payment_method_types: ["card"],
       });
+      console.log(paymentIntent.client_secret);
 
       res.send({
         clientSecret: paymentIntent.client_secret,
       });
     });
 
+    app.get("/payments", async (req, res) => {
+      const email = req.query.email;
+      console.log(email);
+      if (!email) {
+        res.send([]);
+      }
+      const query = { email: email };
+      const result = await paymentCollection.find(query).toArray();
+      res.send(result);
+    });
 
+    app.get("/payments/:id", async (req, res) => {
+      const id = req.params.id;
+      const filter = { _id: new ObjectId(id) };
+      const result = await SelectedClassesCollection.findOne(filter);
+      res.send(result);
+    });
 
-
-    app.post('/payments',async(req,res)=>{
+    app.post("/payments", async (req, res) => {
       const payment = req.body;
       const insertResult = await paymentCollection.insertOne(payment);
 
       const query = {
-        _id: new ObjectId(payment.classId)
-      }
-      const updateDoc = {
-        $inc:{AvailableSeat:-1,enroll:1},
+        _id: new ObjectId(payment.Id),
       };
-      const updateSeats = await classesCollection.updateOne(query,updateDoc);
       const deleteResults = await SelectedClassesCollection.deleteOne(query);
 
-      res.send({insertResult,deleteResults,updateSeats})
 
-    })
+      const filter = {
+        _id: new ObjectId(payment.classId),
+      };
+
+      const existingClass = await classesCollection.findOne(filter);
+      if(existingClass){
+        const seatUpdate=existingClass.AvailableSeat-1;
+        const enrollClass = existingClass.enroll+1;
+        const updateDoc={
+          $set:{AvailableSeat:seatUpdate,enroll:enrollClass}
+        }
+        const updateResult = await classesCollection.updateOne(filter, updateDoc);
+        res.send({ insertResult, deleteResults, updateResult});
+        
+      }else{
+        res.status(404).send('data not found')
+      }
+      
+
+      
+    });
 
     // Send a ping to confirm a successful connection
     await client.db("admin").command({ ping: 1 });
