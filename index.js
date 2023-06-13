@@ -150,6 +150,12 @@ async function run() {
       res.send(result);
     });
 
+    app.get("/instructor", async (req, res) => {
+      const query = { role: "instructor" };
+      const result = await usersCollection.find(query).toArray();
+      res.send(result);
+    });
+
     app.patch("/users/admin/:id", async (req, res) => {
       const id = req.params.id;
       // console.log(id)
@@ -200,6 +206,15 @@ async function run() {
       res.send(result);
     });
 
+    app.get("/homeClass", async (req, res) => {
+      const query = { status: "approved" };
+      const result = await classesCollection
+        .find(query)
+        .sort({ enroll: -1 })
+        .toArray();
+      res.send(result);
+    });
+
     app.get("/approved", async (req, res) => {
       const query = { status: "approved" };
       const result = await classesCollection.find(query).toArray();
@@ -238,7 +253,7 @@ async function run() {
 
     app.post("/create-payment-intent", verifyJWT, async (req, res) => {
       const { price } = req.body;
-      console.log(price)
+      console.log(price);
       const amount = price * 100;
       const paymentIntent = await stripe.paymentIntents.create({
         amount: amount,
@@ -279,27 +294,25 @@ async function run() {
       };
       const deleteResults = await SelectedClassesCollection.deleteOne(query);
 
-
       const filter = {
         _id: new ObjectId(payment.classId),
       };
 
       const existingClass = await classesCollection.findOne(filter);
-      if(existingClass){
-        const seatUpdate=existingClass.AvailableSeat-1;
-        const enrollClass = existingClass.enroll+1;
-        const updateDoc={
-          $set:{AvailableSeat:seatUpdate,enroll:enrollClass}
-        }
-        const updateResult = await classesCollection.updateOne(filter, updateDoc);
-        res.send({ insertResult, deleteResults, updateResult});
-        
-      }else{
-        res.status(404).send('data not found')
+      if (existingClass) {
+        const seatUpdate = existingClass.AvailableSeat - 1;
+        const enrollClass = existingClass.enroll + 1;
+        const updateDoc = {
+          $set: { AvailableSeat: seatUpdate, enroll: enrollClass },
+        };
+        const updateResult = await classesCollection.updateOne(
+          filter,
+          updateDoc
+        );
+        res.send({ insertResult, deleteResults, updateResult });
+      } else {
+        res.status(404).send("data not found");
       }
-      
-
-      
     });
 
     // Send a ping to confirm a successful connection
