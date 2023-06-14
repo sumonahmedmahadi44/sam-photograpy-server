@@ -277,6 +277,19 @@ async function run() {
       const result = await paymentCollection.find(query).toArray();
       res.send(result);
     });
+    app.get("/paymentHistory", async (req, res) => {
+      const email = req.query.email;
+      console.log(email);
+      if (!email) {
+        res.send([]);
+      }
+      const query = { email: email };
+      const options = {
+        sort:{'date':1}
+      }
+      const result = await paymentCollection.find(query,options).toArray();
+      res.send(result);
+    });
 
     app.get("/payments/:id", async (req, res) => {
       const id = req.params.id;
@@ -284,6 +297,7 @@ async function run() {
       const result = await SelectedClassesCollection.findOne(filter);
       res.send(result);
     });
+    
 
     app.post("/payments", async (req, res) => {
       const payment = req.body;
