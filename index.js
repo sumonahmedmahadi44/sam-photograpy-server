@@ -273,7 +273,7 @@ app.put('/feedback/:id',async(req,res)=>{
     },
   }
   const result = await classesCollection.updateOne(filter,myFeedback,options);
-  res.send(result)
+  res.send(result);
 })
 
 
