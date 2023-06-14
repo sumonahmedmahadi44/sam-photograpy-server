@@ -251,6 +251,32 @@ async function run() {
       return res.send(result);
     });
 
+
+
+app.get('/feedback/:id',async(req,res)=>{
+  const id =req.params.id;
+  const query = {_id: new ObjectId(id)};
+  const result = await classesCollection.findOne(query);
+  res.send(query);
+});
+
+
+
+app.put('/feedback/:id',async(req,res)=>{
+  const id = req.params.id;
+  const filter = {_id: new ObjectId(id)};
+  const options = {upsert: true};
+  const classFeedback = req.body;
+  const myFeedback = {
+    $set:{
+      feedback:classFeedback.feedback,
+    },
+  }
+  const result = await classesCollection.updateOne(filter,myFeedback,options);
+  res.send(result)
+})
+
+
     app.post("/create-payment-intent", verifyJWT, async (req, res) => {
       const { price } = req.body;
       console.log(price);
@@ -277,19 +303,19 @@ async function run() {
       const result = await paymentCollection.find(query).toArray();
       res.send(result);
     });
-    // app.get("/paymentHistory",verifyJWT, async (req, res) => {
-    //   const email = req.query.email;
-    //   console.log(email);
-    //   if (!email) {
-    //     res.send([]);
-    //   }
-    //   const query = { email: email };
-    //   const options = {
-    //     sort:{'date':1}
-    //   }
-    //   const result = await paymentCollection.find(query,options).toArray();
-    //   res.send(result);
-    // });
+    app.get("/paymentHistory",verifyJWT, async (req, res) => {
+      const email = req.query.email;
+      console.log(email);
+      if (!email) {
+        res.send([]);
+      }
+      const query = { email: email };
+      const options = {
+        sort:{'date':1}
+      }
+      const result = await paymentCollection.find(query,options).toArray();
+      res.send(result);
+    });
 
     app.get("/payments/:id", async (req, res) => {
       const id = req.params.id;
